@@ -44,6 +44,10 @@ class Cube2x2:
         else:
             self.cube = faces
 
+    def getFacesAsTuple(self):
+        """Return the faces as a tuple of tuples for hashing."""
+        return tuple(tuple(map(tuple, face)) for face in self.cube)
+
     def __str__(self):
         pstr = ""
         # Top face
@@ -93,23 +97,30 @@ class Cube2x2:
 
     def __applyMove(self, move):
         """Apply a single move to the cube"""
-        moveType = move["move"]
-        inverted = move["inverted"]
-        turns = move["turn_count"]
-        
-        for _ in range(turns):
-            if moveType == "R":
-                self.__rotateRightFace(inverted)
-            elif moveType == "L":
-                self.__rotateLeftFace(inverted)
-            elif moveType == "U":
-                self.__rotateUpFace(inverted)
-            elif moveType == "D":
-                self.__rotateDownFace(inverted)
-            elif moveType == "F":
-                self.__rotateFrontFace(inverted)
-            elif moveType == "B":
-                self.__rotateBackFace(inverted)
+        if move == "R":
+            self.__rotateRightFace(False)
+        elif move == "RP":
+            self.__rotateRightFace(True)
+        elif move == "L":
+            self.__rotateLeftFace(False)
+        elif move == "LP":
+            self.__rotateLeftFace(True)
+        elif move == "U":
+            self.__rotateUpFace(False)
+        elif move == "UP":
+            self.__rotateUpFace(True)
+        elif move == "D":
+            self.__rotateDownFace(False)
+        elif move == "DP":
+            self.__rotateDownFace(True)
+        elif move == "F":
+            self.__rotateFrontFace(False)
+        elif move == "FP":
+            self.__rotateFrontFace(True)
+        elif move == "B":
+            self.__rotateBackFace(False)
+        elif move == "BP":
+            self.__rotateBackFace(True)
 
     def __rotateRightFace(self, inverted):
         """Rotate the right face"""
