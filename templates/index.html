@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rubik's Cube Solver - CFOP Method</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>') repeat;
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        .cube-section {
+            background: rgba(248, 250, 252, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .controls-section {
+            background: rgba(248, 250, 252, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid;
+            border-image: linear-gradient(90deg, #6366f1, #8b5cf6) 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cube-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .cube-3d {
+            width: 400px;
+            height: 400px;
+            perspective: 1200px;
+            margin: 30px auto;
+            position: relative;
+        }
+
+        .cube-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: grab;
+            transform: rotateX(-15deg) rotateY(45deg);
+        }
+
+        .cube-wrapper:active {
+            cursor: grabbing;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .cube-face {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+            padding: 4px;
+            border-radius: 4px;
+            background: #000;
+        }
+
+        .cube-sticker {
+            border-radius: 6px;
+            border: 1px solid rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            color: rgba(0, 0, 0, 0.7);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .cube-sticker:hover {
+            transform: scale(0.95);
+        }
+
+        /* Enhanced cube face positioning with realistic 3D effect */
+        .front { 
+            transform: rotateY(0deg) translateZ(150px);
+            background: #222;
+        }
+        .back { 
+            transform: rotateY(180deg) translateZ(150px);
+            background: #222;
+        }
+        .right { 
+            transform: rotateY(90deg) translateZ(150px);
+            background: #222;
+        }
+        .left { 
+            transform: rotateY(-90deg) translateZ(150px);
+            background: #222;
+        }
+        .top { 
+            transform: rotateX(90deg) translateZ(150px);
+            background: #222;
+        }
+        .bottom { 
+            transform: rotateX(-90deg) translateZ(150px);
+            background: #222;
+        }
+
+        /* Simplified cube colors without gradients */
+        .color-G { 
+            background: #00A651;
+            color: white;
+        }
+        .color-O { 
+            background: #FF8C00;
+            color: white;
+        }
+        .color-B { 
+            background: #0066CC;
+            color: white;
+        }
+        .color-R { 
+            background: #DD0000;
+            color: white;
+        }
+        .color-W { 
+            background: #FFFFFF;
+            color: #333;
+        }
+        .color-Y { 
+            background: #FFD700;
+            color: #333;
+        }
+
+        .cube-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .cube-control-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #64748b, #475569);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cube-control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .cube-display {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 14px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: #e2e8f0;
+            padding: 25px;
+            border-radius: 12px;
+            white-space: pre-line;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            line-height: 1.4;
+        }
+
+        .cube-display .face-label {
+            color: #60a5fa;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 15px 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+            border-bottom: 2px solid rgba(96, 165, 250, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .cube-display .face-grid {
+            display: block;
+            margin: 10px 0 20px 0;
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            text-align: center;
+        }
+
+        .cube-display .cube-char {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            text-align: center;
+            line-height: 28px;
+            margin: 2px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            vertical-align: middle;
+            border: 1px solid rgba(0, 0, 0, 0.3);
+        }
+
+        .cube-display .char-G { background: #00A651; color: white; }
+        .cube-display .char-O { background: #FF8C00; color: white; }
+        .cube-display .char-B { background: #0066CC; color: white; }
+        .cube-display .char-R { background: #DD0000; color: white; }
+        .cube-display .char-W { background: #FFFFFF; color: #333; }
+        .cube-display .char-Y { background: #FFD700; color: #333; }
+
+        .cube-display .cube-info {
+            color: #94a3b8;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b, #475569);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #1e293b;
+            min-width: 140px;
+            font-size: 14px;
+        }
+
+        .input-group input, .input-group select {
+            padding: 12px 16px;
+            border: 2px solid rgba(203, 213, 225, 0.5);
+            border-radius: 8px;
+            font-size: 14px;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .solution-steps {
+            margin-top: 25px;
+        }
+
+        .step {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(226, 232, 240, 0.5);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .step:hover {
+            border-color: #6366f1;
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .step-header {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.9));
+            padding: 18px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #1e293b;
+            transition: all 0.3s ease;
+        }
+
+        .step-header:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+        }
+
+        .step-content {
+            padding: 20px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            border-top: 1px solid rgba(226, 232, 240, 0.2);
+        }
+
+        .step-description {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .step-tips {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            color: #d1fae5;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+        }
+
+        .step-moves {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .move {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .move:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .move-guide {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .guide-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .notation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .notation-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .move-symbol {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 14px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .move-desc {
+            font-size: 14px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .advanced-moves, .cfop-explanation {
+            margin-top: 15px;
+        }
+
+        .advanced-moves h4, .cfop-explanation h4 {
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .cfop-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cfop-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border-radius: 8px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .step-name {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .step-desc {
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .show-guide-btn {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 0;
+        }
+
+        .show-guide-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+            background: rgba(248, 250, 252, 0.9);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            margin: 15px 0;
+        }
+
+        .spinner {
+            border: 4px solid rgba(148, 163, 184, 0.2);
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            padding: 18px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-weight: 600;
+            border: 1px solid;
+            backdrop-filter: blur(10px);
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            color: #065f46;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+            color: #991b1b;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status.info {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            color: #3730a3;
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+                padding: 30px;
+            }
+            
+            .cube-3d {
+                width: 350px;
+                height: 350px;
+            }
+            
+            .cube-face {
+                width: 250px;
+                height: 250px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 16px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.2em;
+            }
+            
+            .header p {
+                font-size: 1.1em;
+            }
+            
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 25px;
+                padding: 25px;
+            }
+            
+            .cube-3d {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .cube-face {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .control-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+            
+            .cube-controls {
+                gap: 10px;
+            }
+            
+            .cube-control-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .cube-3d {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .cube-face {
+                width: 180px;
+                height: 180px;
+            }
+            
+            .section-title {
+                font-size: 1.3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🎲 Rubik's Cube Solver</h1>
+                <p>Interactive CFOP Method Solver with Advanced 3D Visualization</p>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="cube-section">
+                <h2 class="section-title">🎯 Interactive Cube Visualization</h2>
+                
+                <div class="cube-container">
+                    <div class="cube-controls">
+                        <button class="cube-control-btn" onclick="resetCubeRotation()">🔄 Reset View</button>
+                        <button class="cube-control-btn" onclick="toggleAutoRotate()">⏸️ Auto Rotate</button>
+                        <button class="cube-control-btn" onclick="viewPreset('front')">📱 Front</button>
+                        <button class="cube-control-btn" onclick="viewPreset('top')">⬆️ Top</button>
+                        <button class="cube-control-btn" onclick="viewPreset('iso')">📐 Isometric</button>
+                    </div>
+                    
+                    <div class="cube-3d" id="cube3dContainer">
+                        <div class="cube-wrapper" id="cubeWrapper">
+                            <div class="cube" id="cube3d">
+                            <!-- Front face -->
+                            <div class="cube-face front" data-face="0">
+                                <div class="cube-sticker" data-pos="0,0"></div>
+                                <div class="cube-sticker" data-pos="0,1"></div>
+                                <div class="cube-sticker" data-pos="0,2"></div>
+                                <div class="cube-sticker" data-pos="1,0"></div>
+                                <div class="cube-sticker" data-pos="1,1"></div>
+                                <div class="cube-sticker" data-pos="1,2"></div>
+                                <div class="cube-sticker" data-pos="2,0"></div>
+                                <div class="cube-sticker" data-pos="2,1"></div>
+                                <div class="cube-sticker" data-pos="2,2"></div>
+                            </div>
+                            <!-- Back face -->
+                            <div class="cube-face back" data-face="2">
+                                <div class="cube-sticker" data-pos="0,0"></div>
+                                <div class="cube-sticker" data-pos="0,1"></div>
+                                <div class="cube-sticker" data-pos="0,2"></div>
+                                <div class="cube-sticker" data-pos="1,0"></div>
+                                <div class="cube-sticker" data-pos="1,1"></div>
+                                <div class="cube-sticker" data-pos="1,2"></div>
+                                <div class="cube-sticker" data-pos="2,0"></div>
+                                <div class="cube-sticker" data-pos="2,1"></div>
+                                <div class="cube-sticker" data-pos="2,2"></div>
+                            </div>
+                            <!-- Right face -->
+                            <div class="cube-face right" data-face="1">
+                                <div class="cube-sticker" data-pos="0,0"></div>
+                                <div class="cube-sticker" data-pos="0,1"></div>
+                                <div class="cube-sticker" data-pos="0,2"></div>
+                                <div class="cube-sticker" data-pos="1,0"></div>
+                                <div class="cube-sticker" data-pos="1,1"></div>
+                                <div class="cube-sticker" data-pos="1,2"></div>
+                                <div class="cube-sticker" data-pos="2,0"></div>
+                                <div class="cube-sticker" data-pos="2,1"></div>
+                                <div class="cube-sticker" data-pos="2,2"></div>
+                            </div>
+                            <!-- Left face -->
+                            <div class="cube-face left" data-face="3">
+                                <div class="cube-sticker" data-pos="0,0"></div>
+                                <div class="cube-sticker" data-pos="0,1"></div>
+                                <div class="cube-sticker" data-pos="0,2"></div>
+                                <div class="cube-sticker" data-pos="1,0"></div>
+                                <div class="cube-sticker" data-pos="1,1"></div>
+                                <div class="cube-sticker" data-pos="1,2"></div>
+                                <div class="cube-sticker" data-pos="2,0"></div>
+                                <div class="cube-sticker" data-pos="2,1"></div>
+                                <div class="cube-sticker" data-pos="2,2"></div>
+                            </div>
+                            <!-- Top face -->
+                            <div class="cube-face top" data-face="5">
+                                <div class="cube-sticker" data-pos="0,0"></div>
+                                <div class="cube-sticker" data-pos="0,1"></div>
+                                <div class="cube-sticker" data-pos="0,2"></div>
+                                <div class="cube-sticker" data-pos="1,0"></div>
+                                <div class="cube-sticker" data-pos="1,1"></div>
+                                <div class="cube-sticker" data-pos="1,2"></div>
+                                <div class="cube-sticker" data-pos="2,0"></div>
+                                <div class="cube-sticker" data-pos="2,1"></div>
+                                <div class="cube-sticker" data-pos="2,2"></div>
+                            </div>
+                            <!-- Bottom face -->
+                            <div class="cube-face bottom" data-face="4">
+                                <div class="cube-sticker" data-pos="0,0"></div>
+                                <div class="cube-sticker" data-pos="0,1"></div>
+                                <div class="cube-sticker" data-pos="0,2"></div>
+                                <div class="cube-sticker" data-pos="1,0"></div>
+                                <div class="cube-sticker" data-pos="1,1"></div>
+                                <div class="cube-sticker" data-pos="1,2"></div>
+                                <div class="cube-sticker" data-pos="2,0"></div>
+                                <div class="cube-sticker" data-pos="2,1"></div>
+                                <div class="cube-sticker" data-pos="2,2"></div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cube-display" id="cubeDisplay">
+                        <!-- Cube text representation will be shown here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <h2 class="section-title">🎮 Cube Controls</h2>
+                
+                <div class="controls">
+                    <div class="input-group">
+                        <label for="scrambleLength">Scramble Length:</label>
+                        <input type="number" id="scrambleLength" value="20" min="5" max="50">
+                        <button class="btn btn-warning" onclick="scrambleCube()">🔀 Scramble</button>
+                    </div>
+
+                    <div class="control-group">
+                        <button class="btn btn-success" onclick="solveCube()">🧩 Solve Cube</button>
+                        <button class="btn btn-primary" onclick="animateSolution()" id="animateBtn" disabled>🎬 Animate Solution</button>
+                        <button class="btn btn-secondary" onclick="resetCube()">🔄 Reset</button>
+                    </div>
+
+                    <button class="show-guide-btn" onclick="showGuide()">
+                        📖 Show Move Guide & Help
+                    </button>
+
+                    <div class="input-group">
+                        <label for="customMoves">Custom Moves:</label>
+                        <input type="text" id="customMoves" placeholder="e.g., R U R' U'">
+                        <button class="btn btn-primary" onclick="applyCustomMoves()">▶️ Apply</button>
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>Processing...</div>
+                </div>
+
+                <div id="status"></div>
+                <div id="scrambleInfo"></div>
+
+                <div class="move-guide" id="moveGuide" style="display: none;">
+                    <h3 class="section-title">📚 Move Notation Guide</h3>
+                    <div class="guide-content">
+                        <div class="notation-grid">
+                            <div class="notation-item">
+                                <span class="move-symbol">R</span>
+                                <span class="move-desc">Right face clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">R'</span>
+                                <span class="move-desc">Right face counter-clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">L</span>
+                                <span class="move-desc">Left face clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">L'</span>
+                                <span class="move-desc">Left face counter-clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">U</span>
+                                <span class="move-desc">Upper face clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">U'</span>
+                                <span class="move-desc">Upper face counter-clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">D</span>
+                                <span class="move-desc">Down face clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">D'</span>
+                                <span class="move-desc">Down face counter-clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">F</span>
+                                <span class="move-desc">Front face clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">F'</span>
+                                <span class="move-desc">Front face counter-clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">B</span>
+                                <span class="move-desc">Back face clockwise</span>
+                            </div>
+                            <div class="notation-item">
+                                <span class="move-symbol">B'</span>
+                                <span class="move-desc">Back face counter-clockwise</span>
+                            </div>
+                        </div>
+                        
+                        <div class="advanced-moves">
+                            <h4>Advanced Notation:</h4>
+                            <div class="notation-grid">
+                                <div class="notation-item">
+                                    <span class="move-symbol">R2</span>
+                                    <span class="move-desc">Right face 180° turn</span>
+                                </div>
+                                <div class="notation-item">
+                                    <span class="move-symbol">Rw</span>
+                                    <span class="move-desc">Right two layers clockwise</span>
+                                </div>
+                                <div class="notation-item">
+                                    <span class="move-symbol">M</span>
+                                    <span class="move-desc">Middle layer (like L)</span>
+                                </div>
+                                <div class="notation-item">
+                                    <span class="move-symbol">x</span>
+                                    <span class="move-desc">Rotate entire cube like R</span>
+                                </div>
+                                <div class="notation-item">
+                                    <span class="move-symbol">y</span>
+                                    <span class="move-desc">Rotate entire cube like U</span>
+                                </div>
+                                <div class="notation-item">
+                                    <span class="move-symbol">z</span>
+                                    <span class="move-desc">Rotate entire cube like F</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="cfop-explanation">
+                            <h4>CFOP Method Steps:</h4>
+                            <div class="cfop-steps">
+                                <div class="cfop-step">
+                                    <span class="step-name">Cross</span>
+                                    <span class="step-desc">Form a white cross on the bottom face</span>
+                                </div>
+                                <div class="cfop-step">
+                                    <span class="step-name">F2L</span>
+                                    <span class="step-desc">First Two Layers - Complete bottom two layers</span>
+                                </div>
+                                <div class="cfop-step">
+                                    <span class="step-name">OLL</span>
+                                    <span class="step-desc">Orientation of Last Layer - Make top face yellow</span>
+                                </div>
+                                <div class="cfop-step">
+                                    <span class="step-name">PLL</span>
+                                    <span class="step-desc">Permutation of Last Layer - Position final pieces</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-secondary" onclick="hideGuide()" style="margin-top: 15px;">
+                            ❌ Hide Guide
+                        </button>
+                    </div>
+                </div>
+
+                <div class="solution-steps" id="solutionSteps" style="display: none;">
+                    <h3 class="section-title">📋 Solution Steps (CFOP Method)</h3>
+                    <div id="stepsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentCubeState = null;
+        let currentScramble = '';
+        let currentSolutionSteps = [];
+        let animationInProgress = false;
+        
+        // Cube interaction variables
+        let isDragging = false;
+        let rotationX = -15;
+        let rotationY = 45;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let autoRotate = true;
+        let autoRotateAnimation;
+
+        // Initialize with solved cube
+        window.onload = function() {
+            resetCube();
+            initializeCubeInteraction();
+            startAutoRotate();
+        };
+
+        function initializeCubeInteraction() {
+            const cubeWrapper = document.getElementById('cubeWrapper');
+            
+            // Mouse events for desktop
+            cubeWrapper.addEventListener('mousedown', handleMouseDown);
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            
+            // Touch events for mobile
+            cubeWrapper.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+            
+            // Prevent context menu on right click
+            cubeWrapper.addEventListener('contextmenu', e => e.preventDefault());
+        }
+
+        function handleMouseDown(e) {
+            e.preventDefault();
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            stopAutoRotate();
+            document.body.style.userSelect = 'none';
+        }
+
+        function handleMouseMove(e) {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+            
+            rotationY += deltaX * 1.2;
+            rotationX -= deltaY * 1.2;
+            
+            // Limit rotation to prevent disorienting flips
+            rotationX = Math.max(-90, Math.min(90, rotationX));
+            
+            updateCubeRotation();
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        }
+
+        function handleMouseUp() {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+                stopAutoRotate();
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (!isDragging || e.touches.length !== 1) return;
+            
+            const deltaX = e.touches[0].clientX - lastMouseX;
+            const deltaY = e.touches[0].clientY - lastMouseY;
+            
+            rotationY += deltaX * 1.0;
+            rotationX -= deltaY * 1.0;
+            
+            rotationX = Math.max(-80, Math.min(80, rotationX));
+            
+            updateCubeRotation();
+            
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+        }
+
+        function handleTouchEnd() {
+            isDragging = false;
+        }
+
+        function updateCubeRotation() {
+            const cubeWrapper = document.getElementById('cubeWrapper');
+            if (isDragging) {
+                cubeWrapper.style.transition = 'none';
+            } else {
+                cubeWrapper.style.transition = 'transform 0.3s ease';
+            }
+            cubeWrapper.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+        }
+
+        function startAutoRotate() {
+            if (!autoRotate) return;
+            
+            function rotate() {
+                if (!isDragging && autoRotate) {
+                    rotationY += 0.5;
+                    updateCubeRotation();
+                }
+                autoRotateAnimation = requestAnimationFrame(rotate);
+            }
+            rotate();
+        }
+
+        function stopAutoRotate() {
+            if (autoRotateAnimation) {
+                cancelAnimationFrame(autoRotateAnimation);
+            }
+        }
+
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+            const btn = event.target;
+            
+            if (autoRotate) {
+                btn.textContent = '⏸️ Auto Rotate';
+                startAutoRotate();
+            } else {
+                btn.textContent = '▶️ Auto Rotate';
+                stopAutoRotate();
+            }
+        }
+
+        function resetCubeRotation() {
+            rotationX = -15;
+            rotationY = 45;
+            updateCubeRotation();
+        }
+
+        function viewPreset(preset) {
+            stopAutoRotate();
+            
+            switch(preset) {
+                case 'front':
+                    rotationX = 0;
+                    rotationY = 0;
+                    break;
+                case 'top':
+                    rotationX = -90;
+                    rotationY = 0;
+                    break;
+                case 'iso':
+                    rotationX = -15;
+                    rotationY = 45;
+                    break;
+            }
+            
+            // Smooth transition
+            const cubeWrapper = document.getElementById('cubeWrapper');
+            cubeWrapper.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+            updateCubeRotation();
+            
+            setTimeout(() => {
+                cubeWrapper.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            }, 800);
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.innerHTML = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function updateCubeVisualization(cubeState) {
+            currentCubeState = cubeState;
+            
+            // Update 3D cube
+            const faces = document.querySelectorAll('.cube-face');
+            faces.forEach((face, faceIndex) => {
+                const stickers = face.querySelectorAll('.cube-sticker');
+                stickers.forEach((sticker, stickerIndex) => {
+                    const row = Math.floor(stickerIndex / 3);
+                    const col = stickerIndex % 3;
+                    const color = cubeState[faceIndex][row][col][0]; // Get first character
+                    
+                    // Clear existing color classes
+                    sticker.className = 'cube-sticker';
+                    sticker.classList.add(`color-${color}`);
+                    sticker.textContent = color;
+                });
+            });
+        }
+
+        function updateCubeDisplay(displayText) {
+            const cubeDisplayElement = document.getElementById('cubeDisplay');
+            
+            // Parse the cube state and create a beautiful visual representation
+            const lines = displayText.split('\n');
+            let formattedHTML = '';
+            
+            const faceNames = {
+                'Front': '🔳 Front Face (F)',
+                'Right': '🔶 Right Face (R)', 
+                'Back': '🔲 Back Face (B)',
+                'Left': '🔷 Left Face (L)',
+                'Up': '🔺 Top Face (U)',
+                'Down': '🔻 Bottom Face (D)'
+            };
+            
+            let currentFace = '';
+            let faceRows = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (line === '') continue;
+                
+                // Check if this line contains a face label
+                let isFaceLabel = false;
+                for (let face in faceNames) {
+                    if (line.includes(face)) {
+                        // Process previous face if we have one
+                        if (currentFace && faceRows.length > 0) {
+                            formattedHTML += `<div class="face-label">${faceNames[currentFace]}</div>`;
+                            formattedHTML += '<div class="face-grid">';
+                            for (let row of faceRows) {
+                                let formattedRow = '';
+                                for (let char of row) {
+                                    if (char.match(/[RGBOWY]/)) {
+                                        formattedRow += `<span class="cube-char char-${char}">${char}</span>`;
+                                    } else if (char === ' ') {
+                                        formattedRow += '<span style="width: 8px; display: inline-block;"></span>';
+                                    }
+                                }
+                                formattedHTML += formattedRow + '<br>';
+                            }
+                            formattedHTML += '</div>';
+                        }
+                        
+                        currentFace = face;
+                        faceRows = [];
+                        isFaceLabel = true;
+                        break;
+                    }
+                }
+                
+                // If this line contains cube data (letters), add it to current face
+                if (!isFaceLabel && line.match(/[RGBOWY]/)) {
+                    faceRows.push(line);
+                }
+            }
+            
+            // Process the last face
+            if (currentFace && faceRows.length > 0) {
+                formattedHTML += `<div class="face-label">${faceNames[currentFace]}</div>`;
+                formattedHTML += '<div class="face-grid">';
+                for (let row of faceRows) {
+                    let formattedRow = '';
+                    for (let char of row) {
+                        if (char.match(/[RGBOWY]/)) {
+                            formattedRow += `<span class="cube-char char-${char}">${char}</span>`;
+                        } else if (char === ' ') {
+                            formattedRow += '<span style="width: 8px; display: inline-block;"></span>';
+                        }
+                    }
+                    formattedHTML += formattedRow + '<br>';
+                }
+                formattedHTML += '</div>';
+            }
+            
+            // If no proper faces were found, create a simple colored representation
+            if (!formattedHTML) {
+                formattedHTML = '<div class="face-label">🎲 Cube State</div><div class="face-grid">';
+                for (let line of lines) {
+                    if (line.trim()) {
+                        let formattedLine = '';
+                        for (let char of line) {
+                            if (char.match(/[RGBOWY]/)) {
+                                formattedLine += `<span class="cube-char char-${char}">${char}</span>`;
+                            } else if (char === ' ') {
+                                formattedLine += '<span style="width: 8px; display: inline-block;"></span>';
+                            } else {
+                                formattedLine += char;
+                            }
+                        }
+                        formattedHTML += formattedLine + '<br>';
+                    }
+                }
+                formattedHTML += '</div>';
+            }
+            
+            // Add helpful info
+            formattedHTML += `
+                <div class="cube-info">
+                    <strong>Color Legend:</strong> 
+                    <span class="cube-char char-R">R</span> Red &nbsp;
+                    <span class="cube-char char-G">G</span> Green &nbsp;
+                    <span class="cube-char char-B">B</span> Blue &nbsp;
+                    <span class="cube-char char-O">O</span> Orange &nbsp;
+                    <span class="cube-char char-W">W</span> White &nbsp;
+                    <span class="cube-char char-Y">Y</span> Yellow
+                </div>
+            `;
+            
+            cubeDisplayElement.innerHTML = formattedHTML;
+        }
+
+        async function scrambleCube() {
+            showLoading(true);
+            const length = parseInt(document.getElementById('scrambleLength').value);
+            
+            try {
+                const response = await fetch('/api/scramble', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ length: length })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentScramble = result.scramble;
+                    updateCubeVisualization(result.cube_state);
+                    updateCubeDisplay(result.cube_display);
+                    
+                    document.getElementById('scrambleInfo').innerHTML = 
+                        `<div class="status info"><strong>Scramble:</strong> ${result.scramble}</div>`;
+                    
+                    showStatus('Cube scrambled successfully!', 'success');
+                    hideSolutionSteps();
+                    
+                    // Disable animation button since we need a new solution
+                    document.getElementById('animateBtn').disabled = true;
+                    currentSolutionSteps = [];
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function solveCube() {
+            if (!currentCubeState) {
+                showStatus('Please scramble the cube first!', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/solve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ cube_state: currentCubeState })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentSolutionSteps = result.steps;
+                    showStatus('Cube solved successfully! Click "Animate Solution" to see it being solved.', 'success');
+                    displaySolutionSteps(result.steps, result.solution);
+                    
+                    // Enable animation button
+                    document.getElementById('animateBtn').disabled = false;
+                    
+                    // Show final solved state info
+                    if (result.solved_state) {
+                        showStatus(`Solution found! Final state is ${result.steps.length > 0 ? 'solved' : 'already solved'}. Click "Animate Solution" to watch!`, 'success');
+                    }
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function animateSolution() {
+            if (!currentCubeState || currentSolutionSteps.length === 0) {
+                showStatus('Please solve the cube first!', 'error');
+                return;
+            }
+            
+            if (animationInProgress) {
+                showStatus('Animation already in progress!', 'error');
+                return;
+            }
+            
+            animationInProgress = true;
+            const animateBtn = document.getElementById('animateBtn');
+            animateBtn.disabled = true;
+            animateBtn.textContent = '🎬 Animating...';
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/animate_solution', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        cube_state: currentCubeState,
+                        steps: currentSolutionSteps 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('Starting solution animation...', 'info');
+                    await playAnimation(result.animation_states);
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+                animationInProgress = false;
+                animateBtn.disabled = false;
+                animateBtn.textContent = '🎬 Animate Solution';
+            }
+        }
+
+        async function playAnimation(animationStates) {
+            const delay = 2000; // 2 seconds between steps
+            
+            for (let i = 0; i < animationStates.length; i++) {
+                const state = animationStates[i];
+                
+                // Update cube visualization
+                updateCubeVisualization(state.cube_state);
+                updateCubeDisplay(state.cube_display);
+                
+                // Update status to show current step
+                if (i === 0) {
+                    showStatus(`🎬 Animation: ${state.step_name}`, 'info');
+                } else if (i === animationStates.length - 1) {
+                    showStatus(`🎉 Animation Complete! Cube is now solved!`, 'success');
+                } else {
+                    showStatus(`🎬 Animation: Applying ${state.step_name} - ${state.moves}`, 'info');
+                }
+                
+                // Highlight current step in solution display
+                highlightCurrentStep(state.step_name);
+                
+                // Wait before next step (except for the last one)
+                if (i < animationStates.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            
+            // Update current cube state to the final solved state
+            if (animationStates.length > 0) {
+                currentCubeState = animationStates[animationStates.length - 1].cube_state;
+            }
+        }
+
+        function highlightCurrentStep(stepName) {
+            // Remove previous highlights
+            document.querySelectorAll('.step').forEach(step => {
+                step.style.border = '2px solid #e2e8f0';
+                step.style.boxShadow = 'none';
+            });
+            
+            // Find and highlight current step
+            document.querySelectorAll('.step-header').forEach(header => {
+                if (header.textContent.includes(stepName)) {
+                    const step = header.parentElement;
+                    step.style.border = '3px solid #4ECDC4';
+                    step.style.boxShadow = '0 4px 15px rgba(78, 205, 196, 0.3)';
+                    step.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+
+        async function applyCustomMoves() {
+            const moves = document.getElementById('customMoves').value.trim();
+            if (!moves) {
+                showStatus('Please enter some moves!', 'error');
+                return;
+            }
+            
+            if (!currentCubeState) {
+                showStatus('Please reset or scramble the cube first!', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/apply_moves', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        cube_state: currentCubeState,
+                        moves: moves 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateCubeVisualization(result.cube_state);
+                    updateCubeDisplay(result.cube_display);
+                    document.getElementById('customMoves').value = '';
+                    showStatus(`Applied moves: ${moves}`, 'success');
+                    hideSolutionSteps();
+                    
+                    // Disable animation button since cube state changed
+                    document.getElementById('animateBtn').disabled = true;
+                    currentSolutionSteps = [];
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function resetCube() {
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateCubeVisualization(result.cube_state);
+                    updateCubeDisplay(result.cube_display);
+                    document.getElementById('scrambleInfo').innerHTML = '';
+                    document.getElementById('customMoves').value = '';
+                    showStatus('Cube reset to solved state!', 'success');
+                    hideSolutionSteps();
+                    
+                    // Disable animation button since cube is already solved
+                    document.getElementById('animateBtn').disabled = true;
+                    currentSolutionSteps = [];
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displaySolutionSteps(steps, fullSolution) {
+            const container = document.getElementById('stepsContainer');
+            const solutionSteps = document.getElementById('solutionSteps');
+            
+            container.innerHTML = '';
+            
+            if (steps.length === 0) {
+                container.innerHTML = '<div class="status success">Cube is already solved! 🎉</div>';
+                solutionSteps.style.display = 'block';
+                return;
+            }
+            
+            steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step';
+                
+                const moves = step.moves.split(' ').filter(move => move.trim());
+                const movesHtml = moves.map(move => 
+                    `<span class="move" title="${getMoveExplanation(move)}">${move}</span>`
+                ).join('');
+                
+                const stepDescription = getStepDescription(step.name);
+                
+                stepDiv.innerHTML = `
+                    <div class="step-header" onclick="toggleStep(${index})">
+                        <span><strong>${step.name}</strong> (${moves.length} moves) - ${stepDescription}</span>
+                        <span id="arrow-${index}">▼</span>
+                    </div>
+                    <div class="step-content" id="content-${index}" style="display: none;">
+                        <div class="step-description">
+                            <strong>Goal:</strong> ${stepDescription}
+                        </div>
+                        <div><strong>Moves:</strong> ${step.moves}</div>
+                        <div class="step-moves">${movesHtml}</div>
+                        <div class="step-tips">
+                            <strong>💡 Tip:</strong> Hover over individual moves to see what they do!
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 10px;" onclick="applyStepMoves('${step.moves}')">
+                            ▶️ Apply This Step
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(stepDiv);
+            });
+            
+            // Add full solution
+            const fullSolutionDiv = document.createElement('div');
+            fullSolutionDiv.className = 'step';
+            fullSolutionDiv.innerHTML = `
+                <div class="step-header" onclick="toggleStep('full')">
+                    <span><strong>Complete Solution</strong> - All steps combined</span>
+                    <span id="arrow-full">▼</span>
+                </div>
+                <div class="step-content" id="content-full" style="display: none;">
+                    <div class="step-description">
+                        <strong>Complete CFOP Solution:</strong> This is the full sequence of moves to solve your cube.
+                    </div>
+                    <pre style="white-space: pre-wrap; font-family: 'JetBrains Mono', monospace;">${fullSolution}</pre>
+                    <button class="btn btn-success" style="margin-top: 10px;" onclick="applyAllMoves()">
+                        🚀 Apply Complete Solution
+                    </button>
+                </div>
+            `;
+            container.appendChild(fullSolutionDiv);
+            
+            solutionSteps.style.display = 'block';
+        }
+
+        function getMoveExplanation(move) {
+            const explanations = {
+                'R': 'Turn right face clockwise 90°',
+                "R'": 'Turn right face counter-clockwise 90°',
+                'R2': 'Turn right face 180°',
+                'L': 'Turn left face clockwise 90°',
+                "L'": 'Turn left face counter-clockwise 90°',
+                'L2': 'Turn left face 180°',
+                'U': 'Turn upper face clockwise 90°',
+                "U'": 'Turn upper face counter-clockwise 90°',
+                'U2': 'Turn upper face 180°',
+                'D': 'Turn down face clockwise 90°',
+                "D'": 'Turn down face counter-clockwise 90°',
+                'D2': 'Turn down face 180°',
+                'F': 'Turn front face clockwise 90°',
+                "F'": 'Turn front face counter-clockwise 90°',
+                'F2': 'Turn front face 180°',
+                'B': 'Turn back face clockwise 90°',
+                "B'": 'Turn back face counter-clockwise 90°',
+                'B2': 'Turn back face 180°',
+                'M': 'Turn middle layer like L',
+                "M'": 'Turn middle layer like L\'',
+                'M2': 'Turn middle layer 180°',
+                'S': 'Turn slice layer like F',
+                "S'": 'Turn slice layer like F\'',
+                'E': 'Turn equatorial layer like D',
+                "E'": 'Turn equatorial layer like D\'',
+                'x': 'Rotate entire cube like R',
+                "x'": 'Rotate entire cube like R\'',
+                'y': 'Rotate entire cube like U',
+                "y'": 'Rotate entire cube like U\'',
+                'z': 'Rotate entire cube like F',
+                "z'": 'Rotate entire cube like F\'',
+                'Rw': 'Turn right two layers clockwise',
+                "Rw'": 'Turn right two layers counter-clockwise',
+                'Lw': 'Turn left two layers clockwise',
+                "Lw'": 'Turn left two layers counter-clockwise',
+                'Uw': 'Turn upper two layers clockwise',
+                "Uw'": 'Turn upper two layers counter-clockwise',
+                'Dw': 'Turn down two layers clockwise',
+                "Dw'": 'Turn down two layers counter-clockwise',
+                'Fw': 'Turn front two layers clockwise',
+                "Fw'": 'Turn front two layers counter-clockwise',
+                'Bw': 'Turn back two layers clockwise',
+                "Bw'": 'Turn back two layers counter-clockwise'
+            };
+            
+            return explanations[move] || `Move: ${move}`;
+        }
+
+        function getStepDescription(stepName) {
+            const descriptions = {
+                'Cross': 'Form a white cross on the bottom face, aligning edge pieces with center colors',
+                'F2L': 'Pair up corner and edge pieces and insert them into the first two layers',
+                'OLL': 'Orient all pieces on the last layer to make the top face completely yellow',
+                'PLL': 'Permute (position) the last layer pieces to their correct final positions'
+            };
+            
+            return descriptions[stepName] || 'Execute the given sequence of moves';
+        }
+
+        function showGuide() {
+            document.getElementById('moveGuide').style.display = 'block';
+            document.querySelector('.show-guide-btn').style.display = 'none';
+        }
+
+        function hideGuide() {
+            document.getElementById('moveGuide').style.display = 'none';
+            document.querySelector('.show-guide-btn').style.display = 'block';
+        }
+
+        async function applyAllMoves() {
+            const solutionPlain = currentSolutionSteps.map(step => step.moves).join(' ');
+            if (solutionPlain.trim()) {
+                const customMovesInput = document.getElementById('customMoves');
+                customMovesInput.value = solutionPlain;
+                await applyCustomMoves();
+            }
+        }
+
+        function hideSolutionSteps() {
+            document.getElementById('solutionSteps').style.display = 'none';
+        }
+
+        function toggleStep(index) {
+            const content = document.getElementById(`content-${index}`);
+            const arrow = document.getElementById(`arrow-${index}`);
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                arrow.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                arrow.textContent = '▼';
+            }
+        }
+
+        async function applyStepMoves(moves) {
+            const customMovesInput = document.getElementById('customMoves');
+            customMovesInput.value = moves;
+            await applyCustomMoves();
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey) {
+                switch(event.key) {
+                    case 's':
+                        event.preventDefault();
+                        scrambleCube();
+                        break;
+                    case 'r':
+                        event.preventDefault();
+                        resetCube();
+                        break;
+                    case 'Enter':
+                        event.preventDefault();
+                        if (document.activeElement.id === 'customMoves') {
+                            applyCustomMoves();
+                        }
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
