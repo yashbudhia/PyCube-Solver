@@ -82,10 +82,75 @@
             background: linear-gradient(135deg, #1f2937, #374151);
             border-bottom: 1px solid rgba(75, 85, 99, 0.5);
             color: #f3f4f6;
-            padding: 12px 20px;
+            padding: 20px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header-content h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e5e7eb;
+            margin: 0 0 8px 0;
+        }
+
+        .header-content p {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin: 0 0 20px 0;
+        }
+
+        /* Cube Type Tabs */
+        .cube-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(17, 24, 39, 0.5);
+            padding: 4px;
+            border-radius: 12px;
+            width: fit-content;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #9ca3af;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
             align-items: center;
+            gap: 4px;
+            min-width: 120px;
+            font-family: inherit;
+        }
+
+        .tab-btn:hover {
+            background: rgba(75, 85, 99, 0.3);
+            color: #d1d5db;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .tab-icon {
+            font-size: 1.25rem;
+            margin-bottom: 2px;
+        }
+
+        .tab-btn span:nth-child(2) {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .tab-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.8;
         }
 
         .header-left {
@@ -1625,6 +1690,20 @@
             <div class="header-content">
                 <h1>🎲 Rubik's Cube Solver</h1>
                 <p>Interactive CFOP Method Solver with Advanced 3D Visualization</p>
+                
+                <!-- Cube Type Tabs -->
+                <div class="cube-tabs">
+                    <button class="tab-btn active" onclick="switchCubeType('3x3')" id="tab-3x3">
+                        <span class="tab-icon">🎲</span>
+                        <span>3x3 Cube</span>
+                        <span class="tab-subtitle">CFOP Method</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchCubeType('2x2')" id="tab-2x2">
+                        <span class="tab-icon">🧩</span>
+                        <span>2x2 Cube</span>
+                        <span class="tab-subtitle">Ortega Method</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1920,6 +1999,7 @@
         let currentScramble = '';
         let currentSolutionSteps = [];
         let animationInProgress = false;
+        let currentCubeType = '3x3';  // Track current cube type
         
         // Cube interaction variables
         let isDragging = false;
@@ -1929,6 +2009,30 @@
         let lastMouseY = 0;
         let autoRotate = true;
         let autoRotateAnimation;
+
+        // Function to switch cube types
+        function switchCubeType(cubeType) {
+            currentCubeType = cubeType;
+            
+            // Update tab appearance
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${cubeType}`).classList.add('active');
+            
+            // Update scramble length for 2x2
+            const scrambleLengthInput = document.getElementById('scrambleLength');
+            if (cubeType === '2x2') {
+                scrambleLengthInput.value = Math.min(scrambleLengthInput.value, 15);
+                scrambleLengthInput.max = 15;
+            } else {
+                scrambleLengthInput.max = 50;
+            }
+            
+            // Reset to solved state for new cube type
+            resetCube();
+            
+            // Update cube display
+            updateCubeDisplay();
+        }
 
         // Initialize with solved cube
         window.onload = function() {
@@ -2173,9 +2277,11 @@
                 const backendFaceIndex = faceMapping[htmlFaceIndex];
                 
                 const stickers = face.querySelectorAll('.cube-sticker');
+                const size = currentCubeType === '2x2' ? 2 : 3;
+                
                 stickers.forEach((sticker, stickerIndex) => {
-                    const row = Math.floor(stickerIndex / 3);
-                    const col = stickerIndex % 3;
+                    const row = Math.floor(stickerIndex / size);
+                    const col = stickerIndex % size;
                     
                     if (cubeState[backendFaceIndex] && cubeState[backendFaceIndex][row] && cubeState[backendFaceIndex][row][col]) {
                         const color = cubeState[backendFaceIndex][row][col][0]; // Get first character
@@ -2184,12 +2290,50 @@
                         sticker.className = 'cube-sticker';
                         sticker.classList.add(`color-${color}`);
                         sticker.textContent = color;
+                    } else {
+                        // Hide stickers that don't exist for 2x2 cube
+                        if (currentCubeType === '2x2') {
+                            sticker.style.display = 'none';
+                        } else {
+                            sticker.style.display = 'flex';
+                        }
+                    }
+                });
+            });
+            
+            // Update cube face grid layout based on cube type
+            updateCubeLayout();
+        }
+
+        function updateCubeLayout() {
+            const faces = document.querySelectorAll('.cube-face');
+            const size = currentCubeType === '2x2' ? 2 : 3;
+            
+            faces.forEach(face => {
+                face.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+                face.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+                
+                const stickers = face.querySelectorAll('.cube-sticker');
+                stickers.forEach((sticker, index) => {
+                    if (currentCubeType === '2x2' && index >= 4) {
+                        sticker.style.display = 'none';
+                    } else {
+                        sticker.style.display = 'flex';
                     }
                 });
             });
         }
 
         function updateCubeDisplay(displayText) {
+            // If no display text provided, show current cube type
+            if (!displayText && currentCubeType) {
+                const cubeTypeElement = document.querySelector('.header-content h1');
+                if (cubeTypeElement) {
+                    cubeTypeElement.textContent = `🎲 ${currentCubeType} Rubik's Cube Solver`;
+                }
+                return;
+            }
+            
             const cubeDisplayElement = document.getElementById('cubeDisplay');
             if (!cubeDisplayElement) {
                 console.warn('cubeDisplay element not found');
@@ -2448,7 +2592,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ length: length })
+                    body: JSON.stringify({ 
+                        length: length,
+                        cube_type: currentCubeType
+                    })
                 });
                 
                 const result = await response.json();
@@ -2460,9 +2607,9 @@
                     updateCubeDisplay(result.cube_display);
                     
                     document.getElementById('scrambleInfo').innerHTML = 
-                        `<div class="status-message info"><strong>Scramble:</strong> ${result.scramble}</div>`;
+                        `<div class="status-message info"><strong>Scramble (${currentCubeType}):</strong> ${result.scramble}</div>`;
                     
-                    showStatus('Cube scrambled successfully!', 'success');
+                    showStatus(`${currentCubeType} cube scrambled successfully!`, 'success');
                     hideSolutionSteps();
                     
                     // Disable animation button since we need a new solution
@@ -2495,14 +2642,17 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ cube_state: currentCubeState })
+                    body: JSON.stringify({ 
+                        cube_state: currentCubeState,
+                        cube_type: currentCubeType 
+                    })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
                     currentSolutionSteps = result.steps;
-                    showStatus('Cube solved successfully!', 'success');
+                    showStatus(`${currentCubeType} cube solved successfully!`, 'success');
                     displaySolutionSteps(result.steps, result.solution);
                     
                     // Enable animation button
@@ -2599,7 +2749,8 @@
                     },
                     body: JSON.stringify({ 
                         cube_state: currentCubeState,
-                        steps: currentSolutionSteps 
+                        steps: currentSolutionSteps,
+                        cube_type: currentCubeType
                     })
                 });
                 
@@ -2815,7 +2966,8 @@
                     },
                     body: JSON.stringify({ 
                         cube_state: currentCubeState,
-                        moves: moves 
+                        moves: moves,
+                        cube_type: currentCubeType
                     })
                 });
                 
@@ -2850,7 +3002,10 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    body: JSON.stringify({ 
+                        cube_type: currentCubeType 
+                    })
                 });
                 
                 const result = await response.json();
@@ -2861,7 +3016,7 @@
                     updateCubeDisplay(result.cube_display);
                     document.getElementById('scrambleInfo').innerHTML = '';
                     document.getElementById('customMoves').value = '';
-                    showStatus('Cube reset to solved state!', 'success');
+                    showStatus(`${currentCubeType} cube reset to solved state!`, 'success');
                     hideSolutionSteps();
                     
                     // Disable animation button since cube is already solved

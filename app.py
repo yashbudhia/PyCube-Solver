@@ -1,7 +1,10 @@
 from flask import Flask, render_template, jsonify, request
 from cube import Cube
+from cube2x2 import Cube2x2
 from solver import Solver
+from solver2x2 import Solver2x2
 from helper import getScramble
+from helper2x2 import getScramble2x2
 import json
 
 app = Flask(__name__)
@@ -16,17 +19,25 @@ def scramble_cube():
     try:
         data = request.get_json()
         scramble_length = data.get('length', 20)
+        cube_type = data.get('cube_type', '3x3')  # '3x3' or '2x2'
         
-        # Create new cube and scramble it
-        cube = Cube()
-        scramble = getScramble(scramble_length)
-        cube.doMoves(scramble)
+        if cube_type == '2x2':
+            # Create new 2x2 cube and scramble it
+            cube = Cube2x2()
+            scramble = getScramble2x2(min(scramble_length, 15))  # 2x2 needs fewer moves
+            cube.doMoves(scramble)
+        else:
+            # Create new 3x3 cube and scramble it (default)
+            cube = Cube()
+            scramble = getScramble(scramble_length)
+            cube.doMoves(scramble)
         
         return jsonify({
             'success': True,
             'scramble': scramble,
             'cube_state': cube.getFaces(),
-            'cube_display': str(cube)
+            'cube_display': str(cube),
+            'cube_type': cube_type
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -37,13 +48,19 @@ def solve_cube():
     try:
         data = request.get_json()
         cube_state = data.get('cube_state')
+        cube_type = data.get('cube_type', '3x3')
         
         if not cube_state:
             return jsonify({'success': False, 'error': 'No cube state provided'})
         
-        # Create cube with the given state
-        cube = Cube(faces=cube_state)
-        solver = Solver(cube)
+        if cube_type == '2x2':
+            # Create 2x2 cube with the given state
+            cube = Cube2x2(faces=cube_state)
+            solver = Solver2x2(cube)
+        else:
+            # Create 3x3 cube with the given state (default)
+            cube = Cube(faces=cube_state)
+            solver = Solver(cube)
         
         # Solve the cube
         solver.solveCube(optimize=True)
@@ -56,7 +73,11 @@ def solve_cube():
         steps = parse_solution_steps(moves)
         
         # Apply the complete solution to get final state
-        solved_cube = Cube(faces=cube_state)
+        if cube_type == '2x2':
+            solved_cube = Cube2x2(faces=cube_state)
+        else:
+            solved_cube = Cube(faces=cube_state)
+            
         if moves_plain.strip():  # Only apply if there are moves
             solved_cube.doMoves(moves_plain)
         
@@ -66,7 +87,8 @@ def solve_cube():
             'solution_plain': moves_plain,
             'steps': steps,
             'solved_state': solved_cube.getFaces(),
-            'solved_display': str(solved_cube)
+            'solved_display': str(solved_cube),
+            'cube_type': cube_type
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -78,18 +100,24 @@ def apply_moves():
         data = request.get_json()
         cube_state = data.get('cube_state')
         moves = data.get('moves')
+        cube_type = data.get('cube_type', '3x3')
         
         if not cube_state or not moves:
             return jsonify({'success': False, 'error': 'Missing cube state or moves'})
         
         # Create cube with the given state
-        cube = Cube(faces=cube_state)
+        if cube_type == '2x2':
+            cube = Cube2x2(faces=cube_state)
+        else:
+            cube = Cube(faces=cube_state)
+            
         cube.doMoves(moves)
         
         return jsonify({
             'success': True,
             'cube_state': cube.getFaces(),
-            'cube_display': str(cube)
+            'cube_display': str(cube),
+            'cube_type': cube_type
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -101,12 +129,16 @@ def animate_solution():
         data = request.get_json()
         cube_state = data.get('cube_state')
         steps = data.get('steps', [])
+        cube_type = data.get('cube_type', '3x3')
         
         if not cube_state:
             return jsonify({'success': False, 'error': 'No cube state provided'})
         
         animation_states = []
-        current_cube = Cube(faces=cube_state)
+        if cube_type == '2x2':
+            current_cube = Cube2x2(faces=cube_state)
+        else:
+            current_cube = Cube(faces=cube_state)
         
         # Add initial state
         animation_states.append({
@@ -129,7 +161,8 @@ def animate_solution():
         
         return jsonify({
             'success': True,
-            'animation_states': animation_states
+            'animation_states': animation_states,
+            'cube_type': cube_type
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -138,11 +171,19 @@ def animate_solution():
 def reset_cube():
     """Reset cube to solved state"""
     try:
-        cube = Cube()
+        data = request.get_json()
+        cube_type = data.get('cube_type', '3x3')
+        
+        if cube_type == '2x2':
+            cube = Cube2x2()
+        else:
+            cube = Cube()
+            
         return jsonify({
             'success': True,
             'cube_state': cube.getFaces(),
-            'cube_display': str(cube)
+            'cube_display': str(cube),
+            'cube_type': cube_type
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
