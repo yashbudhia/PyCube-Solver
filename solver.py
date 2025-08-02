@@ -166,7 +166,6 @@ class Solver():
         if(not isDone):
             print("<<<ERROR>>>")
             print("The program was not able to solve the cube")
-            print("Please contact me (saiakarsh193@gmail.com) and send the scramble used in order fix it")
 
     def __moveMapper(self, side, form, handle_x=False):
         # flexible moves-mapper from local perspective to global perspective
