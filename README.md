@@ -1,5 +1,4 @@
-# PyCube-Solver  
-## Sai Akarsh (17-09-21)  
+# Python based Rubics Cube solver with interactive UI
 
 ### Description  
 Python program that models and solves a Rubik's cube using the **CFOP** method.  
