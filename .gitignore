@@ -1,3 +1,6 @@
 __pycache__
 betatester.py
 tester.py
+
+# Cloud deployment
+.gcloudignore
