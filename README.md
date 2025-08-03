@@ -40,7 +40,7 @@ Try the solver online: **[https://pycube-solver-394748284637.us-central1.run.app
 #### **Solving Features**
 - **Scramble Button**: Generate a random scramble to practice with
 - **Solve Button**: Get the complete CFOP solution with step-by-step breakdown
-- **Move Counter**: See total moves and moves per phase (Cross, F2L, OLL, PLL)
+- **Animate moves**: Get the moves applied to cube 3d display and see the final solution state
 - **Solution Display**: View moves in standard cube notation with phase separation
 
 #### **Advanced Options**
@@ -65,21 +65,7 @@ print(cb)
   
 The code for solving the cube can be found in `solver.py` and its helper data objects in `solver_data.py`.  
 
-If you want to use the solver, add the following code  
-  
-```python
-from solver import Solver
-solver = Solver(cb)
-solver.solveCube()
-# to optimize move count (by removing perspective move redundancy), use
-solver.solveCube(optimize=True)
 
-moves = solver.getMoves()
-# or for more detailed, decorated and condensed output
-moves = solver.getMoves(decorated=True)
-
-print(moves)
-```
 
 ### Notation  
 There are rules and methods that need to be followed in order to use the program. 
