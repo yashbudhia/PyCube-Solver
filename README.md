@@ -10,6 +10,46 @@ To understand the code or to write your own version, read the brief [explanation
 The code for cube manipulation can be found in `cube.py`.  
 The parsing, condenstion and validation for formulas can be found in `helper.py`.  
 
+## 🚀 Quick Start
+
+### Live Demo
+Try the solver online: **[https://pycube-solver-394748284637.us-central1.run.app](https://pycube-solver-394748284637.us-central1.run.app)**
+
+
+1. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+3. **Open your browser**
+   Navigate to `http://localhost:8080`
+
+### How to Use the Frontend
+
+#### **Interactive Cube Interface**
+- **3D Cube Display**: View your cube from all angles with smooth rotations
+- **Click Controls**: Click on any face sticker to change its color
+- **Color Palette**: Select colors from the sidebar palette (White, Yellow, Green, Blue, Red, Orange)
+- **Cube Validation**: The interface automatically checks if your cube configuration is valid
+
+#### **Solving Features**
+- **Scramble Button**: Generate a random scramble to practice with
+- **Solve Button**: Get the complete CFOP solution with step-by-step breakdown
+- **Move Counter**: See total moves and moves per phase (Cross, F2L, OLL, PLL)
+- **Solution Display**: View moves in standard cube notation with phase separation
+
+#### **Advanced Options**
+- **Optimize Toggle**: Enable to reduce move count by eliminating redundant rotations
+- **Reset Button**: Return to solved state
+- **Manual Input**: Enter cube state manually using the text input format
+
+### Programming Interface
+
 You can create a cube object and move it by using the following code  
   
 ```python
@@ -40,20 +80,6 @@ moves = solver.getMoves(decorated=True)
 
 print(moves)
 ```
-  
-### Results  
-The following table shows the average number of moves (each taken over 10,000 solves) it takes to solve the cube for different parameters, each calculated for a different scramble length.  
-
-**Average number of moves:**  
-| scramble length | default (with both False) | with decorated=True | with optimize=True | with both True |
-|:---------------:|:-------------------------:|:-------------------:|:------------------:|:--------------:|
-|        5        |             41            |          38         |         35         |        32      |
-|        10       |             78            |          73         |         66         |        62      |
-|        20       |             87            |          82         |         73         |        69      |
-
-<p align="center">
-  <img src="https://i.postimg.cc/7Y8HzpdV/Figure-1.png" alt="Results plot" style="width: 500px;"/>
-</p>
 
 ### Notation  
 There are rules and methods that need to be followed in order to use the program. 
@@ -73,12 +99,7 @@ There are rules and methods that need to be followed in order to use the program
       WWW
       WWW
   ```
-- The cube index format (if you want to tinker with the code) is defined as  
-  ```
-   5
-  3012
-   4
-  ```
+
 - The cube front face is assumed as Green and the top face is assumed as Yellow (If input is given otherwise, it automatically reorients itself)  
 - The cube face notation followed in this code,  
   <img src="https://i.ibb.co/7W8mHRN/cubenotation.jpg" alt="ThreeJS Coordinates" style="width: 400px;"/>
